@@ -10,21 +10,37 @@ model_columns = joblib.load("ml/models/model_columns.pkl")
 
 def predict_fertilizer(sensor_data, growth_stage):
 
+    # Process light_intensity float to categorical string
+    light_val = sensor_data.get("light_intensity", 0)
+    if isinstance(light_val, (int, float)):
+        if light_val < 150:
+            light_str = "Low"
+        elif light_val < 300:
+            light_str = "Medium"
+        else:
+            light_str = "High"
+    else:
+        light_str = light_val
+
     # Prepare initial raw dataframe
     df = pd.DataFrame([{
-        "soil_moisture": sensor_data["soil_moisture"],
-        "temperature": sensor_data["temperature"],
-        "humidity": sensor_data["humidity"],
+        "soil_moisture": sensor_data.get("soil_moisture", 50),
+        "temperature": sensor_data.get("temperature", 25),
+        "humidity": sensor_data.get("humidity", 50),
+        "nitrogen": sensor_data.get("nitrogen", 20),
+        "phosphorus": sensor_data.get("phosphorus", 15),
+        "potassium": sensor_data.get("potassium", 20),
         "growth_stage": growth_stage,
-        "light_intensity": sensor_data["light_intensity"], # Ensure light is expected string in actual inputs from routes
+        "light_intensity": light_str, 
     }])
 
     # Add engineered features
     df['temp_humidity_interaction'] = df['temperature'] * df['humidity']
     df['moisture_temp_ratio'] = df['soil_moisture'] / (df['temperature'] + 1)
+    df['total_npk'] = df['nitrogen'] + df['phosphorus'] + df['potassium']
     
     # Scale num columns
-    num_cols = ['soil_moisture', 'temperature', 'humidity', 'temp_humidity_interaction', 'moisture_temp_ratio']
+    num_cols = ['soil_moisture', 'temperature', 'humidity', 'nitrogen', 'phosphorus', 'potassium', 'temp_humidity_interaction', 'moisture_temp_ratio', 'total_npk']
     df[num_cols] = scaler.transform(df[num_cols])
     
     # One hot encoding
@@ -45,6 +61,6 @@ def predict_fertilizer(sensor_data, growth_stage):
     }
 
     return {
-    "prediction": label_map[prediction],
-    "confidence": round(confidence * 100, 2)
+    "prediction": label_map[int(prediction)],
+    "confidence": round(float(confidence) * 100, 2)
     }

@@ -17,6 +17,7 @@ function GrowthStageCard({ growthData }) {
     Vegetative:  "🌿",
     Flowering:   "🌸",
     Fruiting:    "🍅",
+    Harvested:   "✅",
   }
 
   const icon = stageIcons[growth_stage] || "🌾"

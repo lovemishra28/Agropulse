@@ -45,6 +45,13 @@ BASE_STAGE_REQUIREMENTS = {
         "potassium":  30,
         "description": "Potassium-heavy to support fruit sizing, sweetness, and disease resistance."
     },
+
+    "Harvested": {
+        "nitrogen":   0,
+        "phosphorus": 0,
+        "potassium":  0,
+        "description": "Crop lifecycle complete — no fertilization required post-harvest."
+    },
 }
 
 

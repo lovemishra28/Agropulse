@@ -21,29 +21,49 @@ def _generate_reading(tick: int) -> dict:
     Produces a realistic sensor reading that changes smoothly over time.
     Uses sine waves + small random noise to simulate a real field environment.
     """
-    # Base values oscillate throughout the "day" (one full cycle = 120 ticks ≈ 10 min)
-    t = tick / 120.0 * 2 * math.pi
+    # Cycle through all moods over a 2.5 minute period (30 ticks = 150 seconds)
+    t = (tick % 30) / 30.0 * 2 * math.pi
+    
+    # We want conditions to smoothly go from perfect to terrible and back.
+    # Perfect values (Yields ~100 Health Score -> Happy)
+    ideal_sm = 55
+    ideal_temp = 27
+    ideal_hum = 60
+    ideal_light = 400
+    ideal_n = 45
+    ideal_p = 25
+    ideal_k = 30
 
-    soil_moisture = round(
-        50 + 15 * math.sin(t * 0.7) + random.uniform(-2, 2), 1
-    )
+    # Terrible values (Yields ~10 Health Score -> Sad)
+    bad_sm = 10
+    bad_temp = 45
+    bad_hum = 20
+    bad_light = 50
+    bad_n = 10
+    bad_p = 5
+    bad_k = 5
 
-    temperature = round(
-        28 + 7 * math.sin(t) + random.uniform(-1, 1), 1
-    )
+    # sin(t) naturally goes from 0 -> 1 -> 0 -> -1 -> 0
+    sin_val = math.sin(t)
+    
+    # Map [-1, 1] to [0, 1] as an interpolation factor (1 is ideal, 0 is bad)
+    factor = (sin_val + 1) / 2.0
+    
+    soil_moisture = round(bad_sm + (ideal_sm - bad_sm) * factor + random.uniform(-2, 2), 1)
+    temperature = round(bad_temp + (ideal_temp - bad_temp) * factor + random.uniform(-1, 1), 1)
+    humidity = round(bad_hum + (ideal_hum - bad_hum) * factor + random.uniform(-2, 2), 1)
+    light_intensity = round(bad_light + (ideal_light - bad_light) * factor + random.uniform(-10, 10), 0)
+    nitrogen = round(bad_n + (ideal_n - bad_n) * factor + random.uniform(-1, 2), 1)
+    phosphorus = round(bad_p + (ideal_p - bad_p) * factor + random.uniform(-1, 1), 1)
+    potassium = round(bad_k + (ideal_k - bad_k) * factor + random.uniform(-1, 2), 1)
 
-    humidity = round(
-        60 + 12 * math.sin(t * 0.5 + 1) + random.uniform(-2, 2), 1
-    )
-
-    # Light intensity follows a day/night pattern
-    light_raw = 400 + 300 * math.sin(t * 0.3)
-    light_intensity = max(0, round(light_raw + random.uniform(-20, 20), 0))
-
-    # Clamp values to realistic ranges
-    soil_moisture = max(10, min(95, soil_moisture))
-    temperature = max(10, min(45, temperature))
-    humidity = max(20, min(98, humidity))
+    # Clamp values to logical realistic ranges just in case
+    soil_moisture = max(0, min(100, soil_moisture))
+    temperature = max(0, min(60, temperature))
+    humidity = max(0, min(100, humidity))
+    nitrogen = max(0, min(100, nitrogen))
+    phosphorus = max(0, min(100, phosphorus))
+    potassium = max(0, min(100, potassium))
 
     return {
         "timestamp": datetime.utcnow(),
@@ -51,6 +71,9 @@ def _generate_reading(tick: int) -> dict:
         "temperature": temperature,
         "humidity": humidity,
         "light_intensity": light_intensity,
+        "nitrogen": nitrogen,
+        "phosphorus": phosphorus,
+        "potassium": potassium,
     }
 
 

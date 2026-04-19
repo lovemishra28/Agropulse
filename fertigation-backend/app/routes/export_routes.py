@@ -1,8 +1,14 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Optional
 from datetime import datetime, timedelta
-from app.database import sensor_collection, recommendation_history_collection
+from pymongo.errors import PyMongoError
+from app.database import (
+    sensor_collection,
+    recommendation_history_collection,
+    is_database_available,
+    DB_UNAVAILABLE_MESSAGE,
+)
 import io
 import csv
 
@@ -12,14 +18,20 @@ router = APIRouter(prefix="/export", tags=["Export"])
 @router.get("/sensor-data")
 def export_sensor_data(hours: Optional[int] = Query(None)):
     """Download sensor data as a CSV file."""
+    if not is_database_available():
+        raise HTTPException(status_code=503, detail=DB_UNAVAILABLE_MESSAGE)
+
     query = {}
     if hours:
         since = datetime.utcnow() - timedelta(hours=hours)
         query["timestamp"] = {"$gte": since}
 
-    data = list(
-        sensor_collection.find(query, {"_id": 0}).sort("timestamp", -1)
-    )
+    try:
+        data = list(
+            sensor_collection.find(query, {"_id": 0}).sort("timestamp", -1)
+        )
+    except PyMongoError:
+        raise HTTPException(status_code=503, detail=DB_UNAVAILABLE_MESSAGE)
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -50,14 +62,20 @@ def export_sensor_data(hours: Optional[int] = Query(None)):
 @router.get("/recommendations")
 def export_recommendations(hours: Optional[int] = Query(None)):
     """Download recommendation history as a CSV file."""
+    if not is_database_available():
+        raise HTTPException(status_code=503, detail=DB_UNAVAILABLE_MESSAGE)
+
     query = {}
     if hours:
         since = datetime.utcnow() - timedelta(hours=hours)
         query["timestamp"] = {"$gte": since}
 
-    data = list(
-        recommendation_history_collection.find(query, {"_id": 0}).sort("timestamp", -1)
-    )
+    try:
+        data = list(
+            recommendation_history_collection.find(query, {"_id": 0}).sort("timestamp", -1)
+        )
+    except PyMongoError:
+        raise HTTPException(status_code=503, detail=DB_UNAVAILABLE_MESSAGE)
 
     output = io.StringIO()
     writer = csv.writer(output)

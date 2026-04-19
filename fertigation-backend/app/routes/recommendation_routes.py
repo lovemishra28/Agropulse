@@ -1,6 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query
+from typing import Optional
 from datetime import datetime
-from app.database import sensor_collection, crop_collection, recommendation_history_collection
+from pymongo.errors import PyMongoError
+from app.database import (
+    sensor_collection,
+    crop_collection,
+    recommendation_history_collection,
+    is_database_available,
+    DB_UNAVAILABLE_MESSAGE,
+)
 from app.services.ml_model_service import predict_fertilizer
 from app.services.growth_stage_service import calculate_growth_stage, get_supported_crops
 from app.services.hybrid_recommendation_service import calculate_hybrid_recommendation
@@ -8,14 +16,27 @@ from app.services.hybrid_recommendation_service import calculate_hybrid_recommen
 router = APIRouter()
 
 @router.get("/recommendation")
-def get_recommendation():
+def get_recommendation(crop_type: Optional[str] = Query(None), seed_date: Optional[str] = Query(None)):
+    if not is_database_available():
+        raise HTTPException(status_code=503, detail=DB_UNAVAILABLE_MESSAGE)
 
-    latest_sensor = sensor_collection.find_one(
-        sort=[("timestamp", -1)],
-        projection={"_id": 0}
-    )
+    try:
+        latest_sensor = sensor_collection.find_one(
+            sort=[("timestamp", -1)],
+            projection={"_id": 0}
+        )
 
-    crop = crop_collection.find_one({}, {"_id": 0})
+        if crop_type and seed_date:
+             # Find specific crop if passed in query
+             crop = crop_collection.find_one({"crop_type": crop_type, "seed_date": seed_date}, projection={"_id": 0})
+             # If doesn't exact match, just use the params directly to construct dynamic crop info
+             if not crop:
+                 crop = {"crop_type": crop_type, "seed_date": seed_date}
+        else:
+             # Otherwise default to the latest globally
+             crop = crop_collection.find_one({}, projection={"_id": 0}, sort=[("_id", -1)])
+    except PyMongoError:
+        raise HTTPException(status_code=503, detail=DB_UNAVAILABLE_MESSAGE)
 
     if not latest_sensor or not crop:
         return {"error": "Missing sensor or crop data"}
@@ -25,7 +46,10 @@ def get_recommendation():
     current_stage = growth_info["growth_stage"]  # e.g., "Vegetative"
 
     # ── Step 2: Pass the calculated growth stage to the ML model ──
-    result = predict_fertilizer(latest_sensor, current_stage)
+    # The ML model was trained on 4 stages only. If the crop is "Harvested",
+    # fall back to "Fruiting" for prediction — the hybrid engine handles the rest.
+    ml_stage = "Fruiting" if current_stage == "Harvested" else current_stage
+    result = predict_fertilizer(latest_sensor, ml_stage)
 
     prediction = result["prediction"]    # "LOW", "MEDIUM", or "HIGH"
     confidence = result["confidence"]    # e.g., 82.5
@@ -71,7 +95,10 @@ def get_recommendation():
         "soil_moisture": latest_sensor.get("soil_moisture"),
         "temperature": latest_sensor.get("temperature"),
     }
-    recommendation_history_collection.insert_one(log_entry)
+    try:
+        recommendation_history_collection.insert_one(log_entry)
+    except PyMongoError:
+        raise HTTPException(status_code=503, detail=DB_UNAVAILABLE_MESSAGE)
 
     return response
 

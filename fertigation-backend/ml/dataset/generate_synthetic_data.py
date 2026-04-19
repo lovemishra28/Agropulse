@@ -18,6 +18,9 @@ for _ in range(num_samples):
     temp = random.randint(15, 40)
     humidity = random.randint(30, 90)
     light = random.choice(lights)
+    nitrogen = random.randint(5, 50)
+    phosphorus = random.randint(5, 30)
+    potassium = random.randint(5, 35)
     
     # --- The underlying Biological Logic ---
     # We assign a point system based on how these factors usually drive fertilizer demand
@@ -25,23 +28,19 @@ for _ in range(num_samples):
     
     # 1. Growth Stage impact
     if stage in ['Vegetative', 'Fruiting']:
-        # High nutrient demand stages
         score += 3
     elif stage == 'Flowering':
         score += 2
-    else: # Germination
-        # Seeds have their own energy initially, low fertilizer needed
+    else: 
         score += 0
         
     # 2. Moisture impact
     if 40 <= moisture <= 70:
-        # Good moisture enables nutrient transport
         score += 1
     elif moisture < 30:
-        # Too dry, applying heavy fertilizer might burn roots
         score -= 1
         
-    # 3. Light impact (more light = more photosynthesis = more nutrient demand)
+    # 3. Light impact
     if light == 'High':
         score += 2
     elif light == 'Medium':
@@ -49,8 +48,13 @@ for _ in range(num_samples):
         
     # 4. Temperature impact
     if 20 <= temp <= 32:
-        # Optimal metabolism
         score += 1
+
+    # 5. Soil NPK Impact (Current NPK in soil vs What it needs)
+    if nitrogen < 15 or phosphorus < 10 or potassium < 10:
+        score += 4
+    elif nitrogen > 35 and phosphorus > 20 and potassium > 25:
+        score -= 4
         
     # --- Mapping points to Fertilizer Needs ---
     if score <= 2:
@@ -61,15 +65,13 @@ for _ in range(num_samples):
         fert_need = 'High'
         
     # --- Introduce 10% random noise ---
-    # This prevents the model from getting 100% accuracy and makes it realistic 
-    # (as if sensors failed or human error occurred)
     if random.random() < 0.10:
         fert_need = random.choice(['Low', 'Medium', 'High'])
         
-    data.append([stage, moisture, temp, humidity, light, fert_need])
+    data.append([stage, moisture, temp, humidity, light, nitrogen, phosphorus, potassium, fert_need])
 
 # Create DataFrame and save
-df = pd.DataFrame(data, columns=['growth_stage', 'Soil_Moisture', 'Temperature', 'Humidity', 'Light', 'Fertilizer_Need'])
+df = pd.DataFrame(data, columns=['growth_stage', 'Soil_Moisture', 'Temperature', 'Humidity', 'Light', 'Nitrogen', 'Phosphorus', 'Potassium', 'Fertilizer_Need'])
 df.to_csv("logical_fertigation_dataset.csv", index=False)
 print(f"Successfully generated {num_samples} rows of logical data!")
 print(df['Fertilizer_Need'].value_counts())

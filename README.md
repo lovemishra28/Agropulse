@@ -49,6 +49,36 @@ AgroPulse WebDashboard/
 - **Node.js** (v18+ recommended)
 - **Python** (v3.8+ recommended)
 
+### Project Startup
+To run the full application, start the backend and frontend in separate terminals.
+
+#### 1. Start the Backend Server
+```bash
+cd fertigation-backend
+python -m venv venv
+# On Windows PowerShell:
+venv\Scripts\Activate.ps1
+# On Windows CMD:
+venv\Scripts\activate
+# On macOS/Linux:
+# source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+The backend API will be available at `http://127.0.0.1:8000`.
+
+#### 2. Start the Frontend App
+```bash
+cd fertigation-frontend
+npm install
+npm run dev
+```
+The frontend will typically open at `http://localhost:5173`.
+
+#### 3. Use the App
+- Open the frontend URL in your browser.
+- The frontend communicates with the backend API on `http://127.0.0.1:8000`.
+
 ### Backend Setup
 1. Navigate to the backend directory:
    ```bash
@@ -71,6 +101,19 @@ AgroPulse WebDashboard/
    uvicorn app.main:app --reload
    ```
    The API will typically be available at `http://127.0.0.1:8000`.
+
+#### Troubleshooting
+If you see a launcher error about `Unable to create process` and the path points to an old project location, the backend virtual environment was likely created before the project was moved.
+
+Fix this by recreating the backend venv:
+```bash
+cd fertigation-backend
+rmdir /s /q venv
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
 
 ### Frontend Setup
 1. Navigate to the frontend directory:

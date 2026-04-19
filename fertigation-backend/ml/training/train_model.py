@@ -24,10 +24,11 @@ data = data.rename(columns={
 # Feature Engineering: Combine features to help the model find patterns
 data['temp_humidity_interaction'] = data['temperature'] * data['humidity']
 data['moisture_temp_ratio'] = data['soil_moisture'] / (data['temperature'] + 1) # +1 to avoid div by zero
+data['total_npk'] = data['nitrogen'] + data['phosphorus'] + data['potassium']
 
 # Scale Numerical Features (Important for certain models and interaction features)
 scaler = StandardScaler()
-num_cols = ['soil_moisture', 'temperature', 'humidity', 'temp_humidity_interaction', 'moisture_temp_ratio']
+num_cols = ['soil_moisture', 'temperature', 'humidity', 'nitrogen', 'phosphorus', 'potassium', 'temp_humidity_interaction', 'moisture_temp_ratio', 'total_npk']
 data[num_cols] = scaler.fit_transform(data[num_cols])
 
 # One-hot encode categorical features
